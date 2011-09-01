@@ -1,0 +1,15 @@
+local_directory: '/Users/brianwarren/Documents/cPanel'
+exclude_patterns: [ '*.swp' ]
+targets:
+  sagan:
+    user: 'brianw'
+    host: 'sagan.cpanel.net'
+    directory: '/home/brianw/Documents'
+  luna:
+    user: 'brian'
+    host: 'luna.qlogicinc.com'
+    directory: '/home/brian/Documents'
+  lefty:
+    user: 'brian'
+    host: 'lefty.qlogicinc.com'
+    directory: '/home/brian/Documents'

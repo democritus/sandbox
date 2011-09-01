@@ -1,0 +1,6 @@
+#!/bin/bash
+
+DIR="$( cd -P "$( dirname "$0" )" && pwd )"
+cd $DIR
+$DIR/daily_sync.rb
+#./daily_sync.rb

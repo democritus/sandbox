@@ -88,3 +88,11 @@ sub options_list {
   }
   return list.join(' ');
 }
+
+    my $action = $_;
+    foreach( @targets ) {
+      @commands.push( eval( $action . '_command', $_ ) );
+    }
+  }
+  @commands.join("; \\\n");
+}

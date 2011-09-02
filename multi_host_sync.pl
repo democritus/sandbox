@@ -11,23 +11,30 @@ sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
   my $self  = {};
-  $self->{NAME}   = undef;
-  $self->{AGE}    = undef;
-  $self->{PEERS}  = [];
+  $self->{CONFIGURATION} = $self->_configuration_from_file();
+  $self->{OPTIONS} = undef;
+  $self->{BASE_NAME} = undef;
+  $self->{SOURCE_DIRECTORY} = undef;
   bless($self, $class);
   return $self;
 }
 
-sub destroy {
+sub DESTROY {
 }
 
+sub configuration {
+  my $self = shift;
+
+}
+
+sub _configuration_from_file {
+}
 
 my %options;
 my %configuration;
 my @targets;
 
 
-sub initialize
 sub source_file {
   if ( ! my $fh = open SOURCE_FILE, '<', @_[0] ) {
     die "Cannot open source directory: $!";

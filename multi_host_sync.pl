@@ -49,7 +49,7 @@ sub configuration {
 sub source_path {
   my %configuration = shift @_;
 
-  return $configuration{ 'source_path' }
+  return $configuration{'source_path'};
 }
 
 sub base_name {

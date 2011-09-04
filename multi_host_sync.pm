@@ -5,16 +5,20 @@ package MultiHostSync;
 use 5.010;
 use strict;
 use warnings;
+use File::Basename;
 use YAML::XS;
 
+# EXAMPLE
+# my $DailySync = MultiHostSync->new( 'daily_sync.yaml' )
+# $DailySync->sync();
+
 sub new {
-  my $proto = shift;
-  my $class = ref($proto) || $proto;
+  my $type = shift @_;
+  my $filename = shift @_;
+  my $class = ref($proto) || $type;
   my $self  = {};
-  $self->{CONFIGURATION} = $self->_configuration_from_file();
-  $self->{OPTIONS} = undef;
-  $self->{BASE_NAME} = undef;
-  $self->{SOURCE_DIRECTORY} = undef;
+  $self->{FILENAME} = $filename;
+  $self->{CONFIGURATION} = {};
   bless($self, $class);
   return $self;
 }
@@ -22,57 +26,8 @@ sub new {
 sub DESTROY {
 }
 
-sub sync {
-  say $self->sync_command
-}
-
-sub configuration {
-  my $self = shift;
-
-}
-
-sub _configuration_from_file {
-}
-
-my %options;
-my %configuration;
-my @targets;
-
-
-sub source_file {
-  if ( ! my $fh = open SOURCE_FILE, '<', @_[0] ) {
-    die "Cannot open source directory: $!";
-  }
-  return $fh;
-}
-
-sub source_filename {
-  return @_[0]
-}
-
-sub source_directory_name {
-  &source_file
-}
-
-sub configuration_from_file {
-  return YAML::XS::LoadFile( @_[0] );
-}
-
-sub test {
-  foreach ( @_ ) {
-    print $_ . "\n";
-  }
-  print @_[0] . "\n";
-}
-
-#say &default_options();
-
-sub sync() {
-  print sync_command( $configuration{'targets'} );
-}
-
 sub default_options {
-  my %options = (
+  (
     'update' => '',
     'recursive' => '',
     'compress' => '',
@@ -81,47 +36,97 @@ sub default_options {
     'rsh' => '"ssh -p22"',
     'dry-run' => '',
   );
-  #return %options;
+}
+
+sub filename {
+  my $self = shift @_;
+  return $self{FILENAME};
+}
+
+sub configuration {
+  my $self = shift @_;
+  # Overwrite default options with options from file
+  return (
+    $self->default_options(),
+    YAML::XS::LoadFile( $self->filename )
+  );
+}
+
+sub sync {
+  my $self = shift @_;
+  print sync_command( $self->configuration ) . "\n";
+}
+
+sub targets {
+  my $self = shift @_;
+  return $self->configuration{'targets'};
+}
+
+sub sync_command {
+  my $self = shift @_;
+  my @commands = [];
+  foreach ( [ 'put' ] ) {
+    foreach ( $self->targets ) {
+      @commands.push( eval($_ . '_command($self->filename)') );
+    }
+  }
+  @commands.join("; \\\n");
+}
+
+sub source_path {
+  my $self = shift @_;
+  return $self->configuration{'source_path'};
+}
+
+sub base_name {
+  my $self = shift @_;
+  unless ( open SOURCE_FILE, '<', $self->source_path ) {
+    die "Cannot open source path: $!";
+  }
+  return File::Basename::basename( $self->source_path );
+}
+
+sub source_directory {
+  my $self = shift @_;
+  return File::Basename::dirname( $self->source_path );
+}
+
+sub target_path {
+  my $self = shift @_;
+  my $target = shift @_;
+  return $self->target_directory( $target ) + '/' + $self->base_name;
+}
+
+sub target_directory {
+  my $self = shift @_;
+  my %target = shift @_;
+  return $target{'user'} . '@' . $target{'host'} . ':' . $target{'directory'};
+}
+
+sub get_command {
+  my $self = shift @_;
+  my $target = shift @_;
+  'rsync ' . $self->options_list() . ' ' . $self->source_path( $target ) . ' ' .
+    $self->target_directory( $target );
+}
+
+sub put_command {
+  my $self = shift @_;
+  my $target = shift @_;
+  'rsync' . $self->options_list() . ' ' . $self->target_path( $target ) . ' ' .
+    $self->source_directory( $target );
 }
 
 sub options_list {
-  my @list;
-  while ( ($key, $value) = each %options ) {
+  my $self = shift @_;
+  my @list = [];
+  # TODO: merge options from file an default options
+  while ( ($key, $value) = each $self->default_options ) {
     if ( $value ) {
       @list.push( '--' . $key . '=' . $value );
     } else {
       @list.push( '--' . $key);
     }
   }
-  return list.join(' ');
-}
-
-sub target_path {
-  my %target = @_[0];
-  return %target{'user'} . '@' . %target{'host'} . ':' . %target{'directory'};
-}
-
-sub put_command {
-  my %target = @_[0];
-  return 'rsync ' . &options_list . ' ' . $configuration{'local_directory'} .
-    ' ' . &target_path( %target );
-}
-
-sub get_command {
-  my %target = @_[0];
-  return 'rsync ' . &options_list . ' ' . &target_path( %target ) . ' ' .
-    $configuration{'local_directory'};
-}
-
-sub sync_command {
-  my %targets = @_[0];
-  my @commands;
-  my @actions = ( 'put' );
-  foreach( @actions ) {
-    my $action = $_;
-    foreach( @targets ) {
-      @commands.push( eval( $action . '_command', $_ ) );
-    }
-  }
-  @commands.join("; \\\n");
+  return @list.join(' ');
 }

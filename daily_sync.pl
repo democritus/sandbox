@@ -1,6 +1,9 @@
 #!/usr/bin/perl
 
-use 'multi_host_sync'
+use MultiHostSync;
 
-mysync = MultiHostSync::new( 'daily_sync.yaml' )
-mysync.sync
+my $DailySync = MultiHostSync->new( 'daily_sync.yaml' )
+$DailySync->sync();
+
+# mysync = MultiHostSync::new( 'daily_sync.yaml' )
+# mysync.sync

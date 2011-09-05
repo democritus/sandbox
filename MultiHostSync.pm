@@ -18,7 +18,6 @@ sub new {
   my $class = ref($type) || $type;
   my $self  = {};
   $self->{FILENAME} = $filename;
-  $self->{CONFIGURATION} = {};
   bless($self, $class);
   return $self;
 }
@@ -59,15 +58,20 @@ sub sync {
 
 sub targets {
   my $self = shift @_;
-  return $self->configuration{'targets'};
+  return $self->configuration('targets');
 }
 
 sub sync_command {
   my $self = shift @_;
   my @commands = [];
   foreach ( [ 'put' ] ) {
-    foreach ( $self->targets ) {
-      @commands.push( eval('$self->' . $_ . '_command($self->filename)') );
+    my $action = $_;
+    my %targets = $self->targets;
+    #foreach ( $self->targets ) {
+    while ( my($key, %value) = each %targets ) {
+      #my $command = $self->put_command(%_);
+      my $command = $self->put_command( %value );
+      push( @commands, eval('$self->' . $action . '_command( %value )') );
     }
   }
   @commands.join("; \\\n");
@@ -75,7 +79,7 @@ sub sync_command {
 
 sub source_path {
   my $self = shift @_;
-  return $self->configuration{'source_path'};
+  return $self->configuration('source_path');
 }
 
 sub base_name {
@@ -83,6 +87,7 @@ sub base_name {
   unless ( open SOURCE_FILE, '<', $self->source_path ) {
     die "Cannot open source path: $!";
   }
+  close SOURCE_FILE;
   return File::Basename::basename( $self->source_path );
 }
 
@@ -120,13 +125,16 @@ sub put_command {
 sub options_list {
   my $self = shift @_;
   my @list = [];
+  my %options = $self->default_options;
   # TODO: merge options from file an default options
-  while ( ($key, $value) = each $self->default_options ) {
+  while ( my($key, $value) = each %options ) {
     if ( $value ) {
-      @list.push( '--' . $key . '=' . $value );
+      push( @list, '--' . $key . '=' . $value );
     } else {
-      @list.push( '--' . $key);
+      push( @list, '--' . $key );
     }
   }
   return @list.join(' ');
 }
+
+1

@@ -64,14 +64,32 @@ sub targets {
 sub sync_command {
   my $self = shift @_;
   my @commands = [];
+  my %targets = (
+    'sagan' => {
+      'user' => 'brianw',
+      'host' => 'sagan.cpanel.net',
+      'directory' => '/home/brianw/Documents'
+    },
+    'luna' => {
+      'user' => 'brianw',
+      'host' => 'sagan.cpanel.net',
+      'directory' => '/home/brianw/Documents'
+    },
+    'lefty' => {
+      'user' => 'brianw',
+      'host' => 'sagan.cpanel.net',
+      'directory' => '/home/brianw/Documents'
+    }
+  );
+  #TODO: why doesn't this work?
+  #my %targets = $self->targets;
   foreach ( [ 'put' ] ) {
     my $action = $_;
-    my %targets = $self->targets;
     #foreach ( $self->targets ) {
-    while ( my($key, %value) = each %targets ) {
+    while ( my($key, $value) = each %targets ) {
       #my $command = $self->put_command(%_);
-      my $command = $self->put_command( %value );
-      push( @commands, eval('$self->' . $action . '_command( %value )') );
+      #my $command = $self->put_command( $value );
+      push( @commands, eval('$self->' . $action . "_command( $value )") );
     }
   }
   @commands.join("; \\\n");

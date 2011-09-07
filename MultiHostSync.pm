@@ -87,12 +87,13 @@ sub sync_command {
     my $action = $_;
     #foreach ( $self->targets ) {
     while ( my($key, $value) = each %targets ) {
-      #my $command = $self->put_command(%_);
-      #my $command = $self->put_command( $value );
-      push( @commands, eval('$self->' . $action . "_command( $value )") );
+      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
+      #my $command = eval( '$self->' . $action . '_command($value)' );
+      my $command = $self->put_command($value);
+      push( @commands, $command );
     }
   }
-  @commands.join("; \\\n");
+  return @commands.join("; \\\n");
 }
 
 sub source_path {

@@ -71,7 +71,7 @@ sub targets {
 sub sync_command {
   my $self = shift @_;
   my @commands = [];
-  my %targets = $self->targets;
+  my %targets = %$self->targets;
   foreach ( [ 'put' ] ) {
     my $action = $_;
     while ( my($key, $value) = each %targets ) {

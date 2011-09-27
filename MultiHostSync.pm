@@ -11,8 +11,11 @@ use YAML::XS;
 use Data::Dumper;
 
 # EXAMPLE
-# my $DailySync = MultiHostSync->new( 'daily_sync.yaml' )
+# my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 # $DailySync->sync();
+
+# Testing
+my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 
 sub new {
   my $type = shift @_;
@@ -50,7 +53,13 @@ sub sync {
 
 sub sync_command {
   my $self = shift @_;
-  
+  my @commands = shift @_;
+  return @commands.join("; \\\n");
+}
+
+sub configuration {
+  my $self = shift @_;
+  return [ 'command 1', 'command 2', 'command 3' ];
 }
 
 #sub sync {

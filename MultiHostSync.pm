@@ -17,27 +17,31 @@ use Data::Dumper;
 # Testing
 my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 
+# Store method names in pseudo-hash
+my $options = 'update recursive compress verbose progress rsy dry-run';
+use fields qw( $options );
+use vars qw( %FIELDS );
+my %default_options;
+@default_options{ qw( $options ) } = ( '', '', '', '', '', '"ssh -p22"', '')
+
 sub new {
   my $type = shift @_;
   my $filename = shift @_;
   my $class = ref($type) || $type;
-  my $self  = {};
-  $self->{FILENAME} = $filename;
+  #my $self  = {};
+  #$self->{FILENAME} = $filename;
+  my $self = bless [\%FIELDS], $class;
+  # TODO: allow overriding default options
+  my %initial_options = %default_options;
+  @$self{keys %initial_options} = values %initial_options;
+  my ($field, $value);
+  while ( ($field, $value) = each %arg ) {
+    die "Invalid argument: $field"
+      unless (exists $FIELDS{"_$field"});
+    $self->{"_$field"} = $value;
+  }
   bless($self, $class);
   return $self;
-}
-
-sub default_options {
-  my %options = (
-    'update' => '',
-    'recursive' => '',
-    'compress' => '',
-    'verbose' => '',
-    'progress' => '',
-    'rsh' => '"ssh -p22"',
-    'dry-run' => '',
-  );
-  return \%options;
 }
 
 sub filename {

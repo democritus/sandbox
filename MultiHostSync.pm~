@@ -11,8 +11,18 @@ use YAML::XS;
 use Data::Dumper;
 
 # EXAMPLE
-# my $DailySync = MultiHostSync->new( 'daily_sync.yaml' )
+# my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 # $DailySync->sync();
+
+# Testing
+my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
+
+# Store method names in pseudo-hash
+my $options = 'update recursive compress verbose progress rsy dry-run';
+use fields qw( $options );
+use vars qw( %FIELDS );
+my %default_options;
+@default_options{ qw( $options ) } = ( '', '', '', '', '', '"ssh -p22"', '')
 
 sub new {
   my $type = shift @_;
@@ -22,19 +32,6 @@ sub new {
   $self->{FILENAME} = $filename;
   bless($self, $class);
   return $self;
-}
-
-sub default_options {
-  my %options = (
-    'update' => '',
-    'recursive' => '',
-    'compress' => '',
-    'verbose' => '',
-    'progress' => '',
-    'rsh' => '"ssh -p22"',
-    'dry-run' => '',
-  );
-  return \%options;
 }
 
 sub filename {

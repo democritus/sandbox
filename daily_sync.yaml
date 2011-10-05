@@ -1,5 +1,7 @@
 local_directory: '/Users/brianwarren/Documents/cPanel'
+
 exclude_patterns: [ '*.swp' ]
+
 targets:
   sagan:
     user: 'brianw'
@@ -13,3 +15,12 @@ targets:
     user: 'brian'
     host: 'lefty.qlogicinc.com'
     directory: '/home/brian/Documents'
+
+options:
+  update: 1
+  recursive: 1
+  compress: 1
+  verbose: 1
+  progress: 1
+  rsh: '"ssh -p22"'
+  dry_run: 1

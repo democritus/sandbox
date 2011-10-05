@@ -17,12 +17,13 @@ use Data::Dumper;
 # Testing
 my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 
+# TODO: I don't really understand this pseudo-hash bullshit
 # Store method names in pseudo-hash
-my $options = 'update recursive compress verbose progress rsy dry-run';
+my $option_list = 'update recursive compress verbose progress rsh dry-run';
 use fields qw( $options );
 use vars qw( %FIELDS );
 my %default_options;
-@default_options{ qw( $options ) } = ( '', '', '', '', '', '"ssh -p22"', '')
+@default_options{ qw( $option_list ) } = ( 1, 1, 1, 1, 1, '"ssh -p22"', 1 )
 
 sub new {
   my $type = shift @_;
@@ -31,7 +32,14 @@ sub new {
   #my $self  = {};
   #$self->{FILENAME} = $filename;
   my $self = bless [\%FIELDS], $class;
-  # TODO: allow overriding default options
+
+  # Get configuration from filename
+  open my $fh, '<', $filename
+    or die "can't open config file: $!";
+  my $configuration = YAML::XS::LoadFile( $fh );
+  my $options = $configuration{ 'options' };
+
+  # TODO: allow overriding options with command line options
   my %initial_options = %default_options;
   @$self{keys %initial_options} = values %initial_options;
   my ($field, $value);

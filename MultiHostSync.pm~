@@ -14,23 +14,22 @@ use Data::Dumper;
 # my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 # $DailySync->sync();
 
-# Testing
-my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
-
-# Store method names in pseudo-hash
-my $options = 'update recursive compress verbose progress rsy dry-run';
-use fields qw( $options );
-use vars qw( %FIELDS );
-my %default_options;
-@default_options{ qw( $options ) } = ( '', '', '', '', '', '"ssh -p22"', '')
-
 sub new {
   my $type = shift @_;
   my $filename = shift @_;
-  my $class = ref($type) || $type;
-  my $self  = {};
+  my $class = ref( $type ) || $type;
+  my $self = {};
+  # Load YAML into configuration hash
+  open my $fh, '<', $filename
+    or die "can't open config file: $!";
+  my $configuration = YAML::XS::LoadFile( $fh );
   $self->{FILENAME} = $filename;
-  bless($self, $class);
+  $self->{CONFIGURATION} = $configuration;
+  $self->{OPTIONS} = @$configuration{'options'};
+  $self->{TARGETS} = @$configuration{'targets'};
+  $self->{EXCLUDE_PATTERNS} = @$configuration{'exclude_patterns'};
+  $self->{LOCAL_DIRECTORY} = @$configuration{'local_directory'};
+  bless( $self, $class );
   return $self;
 }
 
@@ -39,21 +38,48 @@ sub filename {
   return $self->{FILENAME};
 }
 
+sub configuration {
+  my $self = shift @_;
+  return $self->{CONFIGURATION};
+}
+
+sub options {
+  my $self = shift @_;
+  return $self->{OPTIONS};
+}
+
+sub targets {
+  my $self = shift @_;
+  return $self->{TARGETS};
+}
+
+sub exclude_patterns {
+  my $self = shift @_;
+  return $self->{EXCLUDE_PATTERNS};
+}
+
+sub local_directory {
+  my $self = shift @_;
+  return $self->{LOCAL_DIRECTORY};
+}
+
 sub sync {
   my $self = shift @_;
-  print $self->filename . "\n";
-  print $self->sync_command( $self->configuration ) . "\n";
+  #print $self->filename . "\n";
+  #print Dumper $self->configuration;
+  #print Dumper $self->options;
+  #print Dumper $self->targets;
+  #print Dumper $self->exclude_patterns;
+  #print Dumper $self->local_directory;
+  #print $self->sync_command( $self->configuration ) . "\n";
 }
 
 sub sync_command {
   my $self = shift @_;
-  my @commands = shift @_;
-  return @commands.join("; \\\n");
-}
+  my $configuration = shift @_;
+  my @commands = [];
 
-sub configuration {
-  my $self = shift @_;
-  return [ 'command 1', 'command 2', 'command 3' ];
+  return $configuration;
 }
 
 #sub sync {

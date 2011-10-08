@@ -71,54 +71,24 @@ sub sync {
   #print Dumper $self->targets;
   #print Dumper $self->exclude_patterns;
   #print Dumper $self->local_directory;
-  #print $self->sync_command( $self->configuration ) . "\n";
+  print $self->sync_command( $self->configuration ) . "\n";
 }
 
 sub sync_command {
   my $self = shift @_;
   my $configuration = shift @_;
   my @commands = [];
-
-  return $configuration;
+  my %targets = %{$self->targets};
+  foreach ( [ 'put' ] ) {
+    my $action = $_;
+    while ( my($key, $value) = each %targets ) {
+      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
+      my $command = $self->put_command( $value );
+      push( @commands, $command );
+    }
+  }
+  return @commands.join("; \\\n");
 }
-
-#sub sync {
-#  my $self = shift @_;
-#  print $self->sync_command( $self->configuration ) . "\n";
-#}
-
-#sub configuration {
-#  my $self = shift @_;
-#  # Overwrite default options with options from file
-#  my %default_options = $self->default_options;
-#  open my $fh, '<', $self->filename
-#    or die "can't open config file: $!";
-#  my $configuration = YAML::XS::LoadFile( $fh );
-#  $configuration->{ 'options' } = $self->default_options();
-#  Dumper( $configuration );
-#  return $configuration;
-#}
-
-#sub targets {
-#  my $self = shift @_;
-#  Dumper( $self->configuration->{'targets'} );
-#  return $self->configuration->{'targets'};
-#}
-
-#sub sync_command {
-#  my $self = shift @_;
-#  my @commands = [];
-#  my %targets = $self->targets;
-#  foreach ( [ 'put' ] ) {
-#    my $action = $_;
-#    while ( my($key, $value) = each %targets ) {
-#      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
-#      my $command = $self->put_command( $value );
-#      push( @commands, $command );
-#    }
-#  }
-#  return @commands.join("; \\\n");
-#}
 
 #sub source_path {
 #  my $self = shift @_;

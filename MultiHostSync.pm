@@ -14,64 +14,85 @@ use Data::Dumper;
 # my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 # $DailySync->sync();
 
+# Compile-time verified class fields
+# http://perldoc.perl.org/fields.html
+use fields qw( configuration exclude_patterns filename local_directory options targets );
+
 sub new {
-  my $type = shift @_;
-  my $filename = shift @_;
-  my $class = ref( $type ) || $type;
-  my $self = {};
+  my $self = shift;
+  my $filename = shift;
+  $self = fields::new($self) unless ref $self;
   # Load YAML into configuration hash
   open my $fh, '<', $filename
     or die "can't open config file: $!";
   my $configuration = YAML::XS::LoadFile( $fh );
-  $self->{FILENAME} = $filename;
-  $self->{CONFIGURATION} = $configuration;
-  $self->{OPTIONS} = @$configuration{'options'};
-  $self->{TARGETS} = @$configuration{'targets'};
-  $self->{EXCLUDE_PATTERNS} = @$configuration{'exclude_patterns'};
-  $self->{LOCAL_DIRECTORY} = @$configuration{'local_directory'};
-  bless( $self, $class );
+  $self->{configuration} = $configuration;
+  $self->{exclude_patterns} = @$configuration{'exclude_patterns'};
+  $self->{filename} = $filename;
+  $self->{local_directory} = @$configuration{'local_directory'};
+  $self->{options} = @$configuration{'options'};
+  $self->{targets} = @$configuration{'targets'};
   return $self;
 }
 
+#sub new {
+#  my $type = shift @_;
+#  my $filename = shift @_;
+#  my $class = ref( $type ) || $type;
+#  my $self = {};
+#  # Load YAML into configuration hash
+#  open my $fh, '<', $filename
+#    or die "can't open config file: $!";
+#  my $configuration = YAML::XS::LoadFile( $fh );
+#  $self->{configuration} = $configuration;
+#  $self->{exclude_patterns} = @$configuration{'exclude_patterns'};
+#  $self->{filename} = $filename;
+#  $self->{local_directory} = @$configuration{'local_directory'};
+#  $self->{options} = @$configuration{'options'};
+#  $self->{targets} = @$configuration{'targets'};
+#  bless( $self, $class );
+#  return $self;
+#}
+
 sub filename {
   my $self = shift @_;
-  return $self->{FILENAME};
+  return $self->{filename};
 }
 
 sub configuration {
   my $self = shift @_;
-  return $self->{CONFIGURATION};
+  return $self->{configuration};
 }
 
 sub options {
   my $self = shift @_;
-  return $self->{OPTIONS};
+  return $self->{options};
 }
 
 sub targets {
   my $self = shift @_;
-  return $self->{TARGETS};
+  return $self->{targets};
 }
 
 sub exclude_patterns {
   my $self = shift @_;
-  return $self->{EXCLUDE_PATTERNS};
+  return $self->{exclude_patterns};
 }
 
 sub local_directory {
   my $self = shift @_;
-  return $self->{LOCAL_DIRECTORY};
+  return $self->{local_directory};
 }
 
 sub sync {
   my $self = shift @_;
-  #print $self->filename . "\n";
-  #print Dumper $self->configuration;
+  print $self->filename . "\n";
+  print Dumper $self->configuration;
   #print Dumper $self->options;
   #print Dumper $self->targets;
   #print Dumper $self->exclude_patterns;
   #print Dumper $self->local_directory;
-  print $self->sync_command( $self->configuration ) . "\n";
+  #print $self->sync_command( $self->configuration ) . "\n";
 }
 
 sub sync_command {
@@ -80,12 +101,12 @@ sub sync_command {
   my @commands = [];
   my %targets = %{$self->targets};
   foreach ( [ 'put' ] ) {
-    my $action = $_;
-    while ( my($key, $value) = each %targets ) {
-      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
-      my $command = $self->put_command( $value );
-      push( @commands, $command );
-    }
+    #my $action = $_;
+    #while ( my($key, $value) = each %targets ) {
+    #  #my $command = eval( '$self->' . $action . '_command( $value ) ' );
+    #  #my $command = $self->put_command( $value );
+    #  push( @commands, $command );
+    #}
   }
   return @commands.join("; \\\n");
 }

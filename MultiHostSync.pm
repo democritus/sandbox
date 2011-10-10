@@ -18,6 +18,16 @@ use Data::Dumper;
 # http://perldoc.perl.org/fields.html
 use fields qw( configuration exclude_patterns filename local_directory options targets );
 
+my %default_options = (
+  'compress' => 1,
+  'dry_run' => 0,
+  'progress' => 1,
+  'recursive' => 1,
+  'rsh' => '"ssh -p22"',
+  'update' => 1,
+  'verbose' => 1
+);
+
 sub new {
   my $self = shift;
   my $filename = shift;
@@ -66,7 +76,25 @@ sub configuration {
 
 sub options {
   my $self = shift @_;
-  return $self->{options};
+  my %options = %default_options;
+  # Merge options from file with default options
+  @options{ keys %{$self->{options}} } = values %{$self->{options}};
+  return \%options;
+}
+
+sub options_list {
+  my $self = shift @_;
+  my @list = ();
+  my $options = $self->options;
+  while ( my($key, $value) = each %$options ) {
+    next unless $value;
+    if ( $value == 1 ) {
+      push ( @list, '--' . $key );
+    } else {
+      push( @list, '--' . $key . '=' . $value );
+    }
+  }
+  return join( ' ', @list );
 }
 
 sub targets {
@@ -86,89 +114,78 @@ sub local_directory {
 
 sub sync {
   my $self = shift @_;
-  print $self->filename . "\n";
-  print Dumper $self->configuration;
+  #print $self->filename . "\n";
+  #print Dumper $self->configuration;
   #print Dumper $self->options;
   #print Dumper $self->targets;
   #print Dumper $self->exclude_patterns;
   #print Dumper $self->local_directory;
-  #print $self->sync_command( $self->configuration ) . "\n";
+  print $self->sync_command . "\n";
+  #print Dumper $self->options_list;
 }
 
 sub sync_command {
   my $self = shift @_;
-  my $configuration = shift @_;
   my @commands = [];
-  my %targets = %{$self->targets};
+  my $targets = $self->targets;
   foreach ( [ 'put' ] ) {
-    #my $action = $_;
-    #while ( my($key, $value) = each %targets ) {
-    #  #my $command = eval( '$self->' . $action . '_command( $value ) ' );
-    #  #my $command = $self->put_command( $value );
-    #  push( @commands, $command );
-    #}
+    my $action = $_;
+    while ( my($key, $value) = each %$targets ) {
+      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
+      #my $command = $self->put_command( $value );
+      #my $command = $self->put_command( $value (
+      push( @commands, $self->put_command( $value ) );
+      #push( @commands, $self->$action_command( $value ) );
+    }
   }
-  return @commands.join("; \\\n");
+  return join( "; \\\n", @commands );
 }
 
-#sub source_path {
-#  my $self = shift @_;
-#  return $self->configuration('source_path');
-#}
+sub source_path {
+  my $self = shift @_;
+  my $configuration = $self->configuration;
+  return @$configuration{'source_path'};
+}
 
-#sub base_name {
-#  my $self = shift @_;
-#  unless ( open SOURCE_FILE, '<', $self->source_path ) {
-#    die "Cannot open source path: $!";
-#  }
-#  close SOURCE_FILE;
-#  return File::Basename::basename( $self->source_path );
-#}
+sub base_name {
+  my $self = shift @_;
+  unless ( open SOURCE_FILE, '<', $self->source_path ) {
+    die "Cannot open source path: $!";
+  }
+  close SOURCE_FILE;
+  return File::Basename::basename( $self->source_path );
+}
 
-#sub source_directory {
-#  my $self = shift @_;
-#  return File::Basename::dirname( $self->source_path );
-#}
+sub source_directory {
+  my $self = shift @_;
+  return File::Basename::dirname( $self->source_path );
+}
 
-#sub target_path {
-#  my $self = shift @_;
-#  my %target = shift @_;
-#  return $self->target_directory( %target ) + '/' + $self->base_name;
-#}
+sub target_path {
+  my $self = shift @_;
+  my $target = shift @_;
+  return $self->target_directory( $target ) . '/' + $self->base_name;
+}
 
-#sub target_directory {
-#  my $self = shift @_;
-#  my %target = shift @_;
-#  return $target{'user'} . '@' . $target{'host'} . ':' . $target{'directory'};
-#}
+sub target_directory {
+  my $self = shift @_;
+  my $target = shift @_;
+  return @$target{'user'} . '@' . @$target{'host'} . ':' .
+    @$target{'directory'};
+}
 
-#sub get_command {
-#  my $self = shift @_;
-#  my %target = shift @_;
-#  return 'rsync ' . $self->options_list() . ' ' .
-#    $self->source_path( %target ) . ' ' . $self->target_directory( %target );
-#}
+sub get_command {
+  my $self = shift @_;
+  my $target = shift @_;
+  return 'rsync ' . $self->options_list . ' ' .
+    $self->source_path( $target ) . ' ' . $self->target_directory( $target );
+}
 
-#sub put_command {
-#  my $self = shift @_;
-#  my %target = shift @_;
-#  return 'rsync' . $self->options_list() . ' ' . $self->target_path( %target ) .
-#    ' ' . $self->source_directory( %target );
-#}
-
-#sub options_list {
-#  my $self = shift @_;
-#  my @list = [];
-#  my %options = $self->default_options;
-#  # TODO: merge options from file an default options
-#  while ( my($key, $value) = each %options ) {
-#    if ( $value ) {
-#      push( @list, '--' . $key . '=' . $value );
-#    } else {
-#      push( @list, '--' . $key );
-#    }
-#  }
-#  return @list.join(' ');
-#}
+sub put_command {
+  my $self = shift @_;
+  my $target = shift @_;
+  return 'rsync' . $self->options_list . ' ' . $self->target_path( $target ) .
+    ' ' . $self->source_directory( $target );
+}
 
 1

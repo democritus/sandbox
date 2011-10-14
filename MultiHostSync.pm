@@ -5,7 +5,7 @@ package MultiHostSync;
 use 5.010;
 use strict;
 use warnings;
-use Cwd;
+#use Cwd;
 use File::Basename;
 use YAML::XS;
 use Data::Dumper;
@@ -45,25 +45,6 @@ sub new {
   return $self;
 }
 
-#sub new {
-#  my $type = shift @_;
-#  my $filename = shift @_;
-#  my $class = ref( $type ) || $type;
-#  my $self = {};
-#  # Load YAML into configuration hash
-#  open my $fh, '<', $filename
-#    or die "can't open config file: $!";
-#  my $configuration = YAML::XS::LoadFile( $fh );
-#  $self->{configuration} = $configuration;
-#  $self->{exclude_patterns} = @$configuration{'exclude_patterns'};
-#  $self->{filename} = $filename;
-#  $self->{local_directory} = @$configuration{'local_directory'};
-#  $self->{options} = @$configuration{'options'};
-#  $self->{targets} = @$configuration{'targets'};
-#  bless( $self, $class );
-#  return $self;
-#}
-
 sub filename {
   my $self = shift @_;
   return $self->{filename};
@@ -88,10 +69,10 @@ sub options_list {
   my $options = $self->options;
   while ( my($key, $value) = each %$options ) {
     next unless $value;
-    if ( $value == 1 ) {
-      push ( @list, '--' . $key );
-    } else {
+    if ( $value ne 0 ) {
       push( @list, '--' . $key . '=' . $value );
+    } else {
+      push ( @list, '--' . $key );
     }
   }
   return join( ' ', @list );
@@ -128,14 +109,12 @@ sub sync_command {
   my $self = shift @_;
   my @commands = [];
   my $targets = $self->targets;
-  foreach ( [ 'put' ] ) {
-    my $action = $_;
+  foreach ( ('put', 'get', 'put') ) {
+    my $method = $_ . '_command';
     while ( my($key, $value) = each %$targets ) {
-      #my $command = eval( '$self->' . $action . '_command( $value ) ' );
-      #my $command = $self->put_command( $value );
-      #my $command = $self->put_command( $value (
-      push( @commands, $self->put_command( $value ) );
-      #push( @commands, $self->$action_command( $value ) );
+      # Necessary?
+      # no strict "refs";
+      push( @commands, $self->$method( $value ) );
     }
   }
   return join( "; \\\n", @commands );
@@ -164,7 +143,7 @@ sub source_directory {
 sub target_path {
   my $self = shift @_;
   my $target = shift @_;
-  return $self->target_directory( $target ) . '/' + $self->base_name;
+  return $self->target_directory( $target ) . '/' . $self->base_name;
 }
 
 sub target_directory {
@@ -177,14 +156,14 @@ sub target_directory {
 sub get_command {
   my $self = shift @_;
   my $target = shift @_;
-  return 'rsync ' . $self->options_list . ' ' .
-    $self->source_path( $target ) . ' ' . $self->target_directory( $target );
+  return 'rsync ' . $self->options_list . ' ' . $self->source_path( $target ) .
+    ' ' . $self->target_directory( $target );
 }
 
 sub put_command {
   my $self = shift @_;
   my $target = shift @_;
-  return 'rsync' . $self->options_list . ' ' . $self->target_path( $target ) .
+  return 'rsync ' . $self->options_list . ' ' . $self->target_path( $target ) .
     ' ' . $self->source_directory( $target );
 }
 

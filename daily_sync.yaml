@@ -1,4 +1,4 @@
-local_directory: '/Users/brianwarren/Documents/cPanel'
+source_path: '/home/brian/Documents/cPanel'
 
 exclude_patterns: [ '*.swp' ]
 

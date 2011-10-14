@@ -107,7 +107,7 @@ sub sync {
 
 sub sync_command {
   my $self = shift @_;
-  my @commands = [];
+  my @commands = ();
   my $targets = $self->targets;
   foreach ( ('put', 'get', 'put') ) {
     my $method = $_ . '_command';

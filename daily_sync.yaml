@@ -17,10 +17,11 @@ targets:
     directory: '/home/brian/Documents'
 
 options:
-  update: true
-  recursive: true
-  compress: true
-  verbose: true
-  progress: false
-  rsh: '"ssh -p22"'
   dry_run: true
+  compress: true
+  progress: true
+  recursive: true
+  rsh: '"ssh -p22"'
+  test_false: false
+  update: true
+  verbose: true

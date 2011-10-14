@@ -70,9 +70,11 @@ sub options_list {
   while ( my($key, $value) = each %$options ) {
     next unless $value;
     if ( $value ne 0 ) {
-      push( @list, '--' . $key . '=' . $value );
-    } else {
-      push ( @list, '--' . $key );
+      if ( $value ne 1 ) {
+        push( @list, '--' . $key . '=' . $value );
+      } else {
+        push ( @list, '--' . $key );
+      }
     }
   }
   return join( ' ', @list );
@@ -101,8 +103,8 @@ sub sync {
   #print Dumper $self->targets;
   #print Dumper $self->exclude_patterns;
   #print Dumper $self->local_directory;
-  print $self->sync_command . "\n";
   #print Dumper $self->options_list;
+  print $self->sync_command . "\n";
 }
 
 sub sync_command {

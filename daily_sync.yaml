@@ -1,20 +1,24 @@
-source_path: '/home/brian/Documents/cPanel'
+files: [ 'cPanel', 'Qlogic' ]
 
 exclude_patterns: [ '*.swp' ]
 
-targets:
+hosts:
   sagan:
     user: 'brianw'
-    host: 'sagan.cpanel.net'
+    domain: 'sagan.cpanel.net'
     directory: '/home/brianw/Documents'
   luna:
     user: 'brian'
-    host: 'luna.qlogicinc.com'
+    domain: 'luna.qlogicinc.com'
     directory: '/home/brian/Documents'
   lefty:
     user: 'brian'
-    host: 'lefty.qlogicinc.com'
+    domain: 'lefty.qlogicinc.com'
     directory: '/home/brian/Documents'
+  cpbrianw:
+    user: 'brianwarren'
+    domain: 'cpbrianw.cptxoffice.net'
+    directory: '/Users/brianwarren/Documents'
 
 options:
   dry_run: true

@@ -9,68 +9,87 @@ use File::Basename;
 use YAML::XS;
 use Data::Dumper;
 use Sys::Hostname;
+use Getopt::Long;
 
 # EXAMPLE
 # my $DailySync = MultiHostSync->new( 'daily_sync.yaml' );
 # $DailySync->sync();
 
-# Compile-time verified class fields
-# http://perldoc.perl.org/fields.html
-use fields qw( configuration exclude_patterns files hosts local_directory options );
-
+# Load command line options into hash
+my %user_options = ();
+Getopt::Long::GetOptions(
+  'compress' => \$user_options{'compress'},
+  'dry-run' => \$user_options{'dry-run'},
+  'progress' => \$user_options{'progress'},
+  'recursive' => \$user_options{'recursive'},
+  'rsh=s' => \$user_options{'rsh'},
+  'update' => \$user_options{'update'},
+  'verbose' => \$user_options{'verbose'}
+);
+# Default options
 my %default_options = (
   'compress' => 1,
-  'dry_run' => 0,
+  'dry-run' => 0,
   'progress' => 1,
   'recursive' => 1,
   'rsh' => '"ssh -p22"',
   'update' => 1,
   'verbose' => 1
 );
+# Note that options are also loaded from a configuration file.
+# Combined in subroutine "options"
+# Priority: 1. Command line  2. Config file  3. Default
+
+# Compile-time verified class fields
+# http://perldoc.perl.org/fields.html
+use fields qw( CONFIGURATION );
 
 sub new {
   my $self = shift;
   my $configuration_file = shift;
-  # TODO: get options array to permit setting any options from command line
   $self = fields::new($self) unless ref $self;
   # Load YAML into configuration hash
   open my $fh, '<', $configuration_file
     or die "can't open config file: $!";
   my $configuration = YAML::XS::LoadFile( $fh );
-  $self->{configuration} = $configuration;
-  $self->{exclude_patterns} = $configuration->{'exclude_patterns'};
-  $self->{files} = $configuration->{'files'};
-  $self->{hosts} = $configuration->{'hosts'};
-  $self->{local_directory} = '';
-  $self->{options} = $configuration->{'options'};
-  # Figure out which of the hosts is the source
-  my $current_host = shift || Sys::Hostname::hostname();
-  while ( my($key, $value) = each %{$self->{hosts}} ) {
-    # Match with current host if matches with nickname or
-    # full domain name
-    if ( $key eq $current_host || $value->{'domain'} eq $current_host ) {
-      $self->{local_directory} = $value->{'directory'};
-      delete $self->{hosts}->{$key};
+  # Replace underscore with dash in key names (YAML files disallow underscores)
+  my $options = $configuration->{'options'}; 
+  while ( my($key, $value) = each %$options ) {
+    if ( $key =~ /_/ ) {
+      my $fixed_key = $key;
+      $fixed_key =~ s/_/-/;
+      $options->{$fixed_key} = $value;
+      delete $options->{$key};
     }
   }
+  $self->{CONFIGURATION} = $configuration;
   return $self;
 }
 
 sub configuration {
   my $self = shift;
-  return $self->{configuration};
+  return $self->{CONFIGURATION};
 }
 
 sub files {
   my $self = shift;
-  return $self->{files};
+  return $self->configuration->{'files'};
 }
 
 sub options {
   my $self = shift;
+  # Set options equal to default options
   my %options = %default_options;
-  # Merge options from file with default options
-  @options{ keys %{$self->{options}} } = values %{$self->{options}};
+  # Override with values from configuration file
+  my $config_options = $self->configuration->{'options'};
+  @options{ keys %$config_options } = values %$config_options;
+  # Override with values from command line
+  while ( my($key, $value) = each %user_options ) {
+    if ( defined $value ) {
+      $options{$key} = $value;
+    }
+  }
+  print Dumper \%options;
   return \%options;
 }
 
@@ -80,7 +99,6 @@ sub options_list {
   my $options = $self->options;
   while ( my($key, $value) = each %$options ) {
     next unless $value;
-    $key = 'dry-run' if $key eq 'dry_run';
     if ( $value ne 0 ) {
       if ( $value ne 1 ) {
         push( @list, '--' . $key . '=' . $value );
@@ -92,14 +110,38 @@ sub options_list {
   return join( ' ', @list );
 }
 
-sub hosts {
-  my $self = shift @_;
-  return $self->{hosts};
+sub remote_hosts {
+  my $self = shift;
+  my @result = $self->remote_hosts_and_local_directory;
+  return $result[0];
+}
+
+sub local_directory {
+  my $self = shift;
+  my @result = $self->remote_hosts_and_local_directory;
+  return $result[1];
+}
+
+sub remote_hosts_and_local_directory {
+  my $self = shift;
+  my %hosts = %{ $self->configuration->{'hosts'} };
+  my $current_host = Sys::Hostname::hostname();
+  my $local_directory = '';
+  # Figure out which of the hosts is the source
+  while ( my($key, $value) = each %hosts ) {
+    # Match with current host if matches domain
+    if ( $value->{'domain'} eq $current_host ) {
+      $local_directory = $value->{'directory'};
+      delete $hosts{$key};
+      last;
+    }
+  }
+  return ( \%hosts, $local_directory );
 }
 
 sub exclude_patterns {
   my $self = shift;
-  return $self->{exclude_patterns};
+  return $self->configuration->{'exclude_patterns'};
 }
 
 sub sync {
@@ -110,20 +152,16 @@ sub sync {
 sub sync_command {
   my $self = shift;
   my @commands = ();
+  my $remote_hosts = $self->remote_hosts;
   foreach ( ('put', 'get', 'put') ) {
     my $method = $_ . '_command';
-    while ( my($key, $value) = each %{$self->hosts} ) {
+    while ( my($key, $value) = each %$remote_hosts ) {
       # Necessary?
       # no strict "refs";
       push( @commands, $self->$method( $value ) );
     }
   }
   return join( "; \\\n", @commands );
-}
-
-sub local_directory {
-  my $self = shift;
-  return $self->{local_directory};
 }
 
 sub remote_directory {

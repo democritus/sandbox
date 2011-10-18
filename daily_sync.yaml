@@ -26,6 +26,5 @@ options:
   progress: true
   recursive: true
   rsh: '"ssh -p22"'
-  test_false: false
   update: true
   verbose: true

@@ -1,7 +1,5 @@
 files: [ 'cPanel', 'Qlogic' ]
 
-exclude_patterns: [ '*.swp' ]
-
 hosts:
   sagan:
     user: 'brianw'
@@ -22,6 +20,7 @@ hosts:
 
 options:
   dry_run: true
+  exclude: [ '"*.swp"', '"*~"' ]
   compress: true
   progress: true
   recursive: true

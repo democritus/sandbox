@@ -20,6 +20,7 @@ my %user_options = ();
 Getopt::Long::GetOptions(
   'compress' => \$user_options{'compress'},
   'dry-run' => \$user_options{'dry-run'},
+  'exclude=s' => \$user_options{'exclude'},
   'progress' => \$user_options{'progress'},
   'recursive' => \$user_options{'recursive'},
   'rsh=s' => \$user_options{'rsh'},
@@ -29,7 +30,8 @@ Getopt::Long::GetOptions(
 # Default options
 my %default_options = (
   'compress' => 1,
-  'dry-run' => 0,
+  #'dry-run' => 0,
+  #'exclude' => 0,
   'progress' => 1,
   'recursive' => 1,
   'rsh' => '"ssh -p22"',
@@ -89,7 +91,6 @@ sub options {
       $options{$key} = $value;
     }
   }
-  print Dumper \%options;
   return \%options;
 }
 
@@ -99,11 +100,23 @@ sub options_list {
   my $options = $self->options;
   while ( my($key, $value) = each %$options ) {
     next unless $value;
-    if ( $value ne 0 ) {
-      if ( $value ne 1 ) {
-        push( @list, '--' . $key . '=' . $value );
-      } else {
-        push ( @list, '--' . $key );
+    # In case $value is an array, cycle through each value
+    my @value_instances = ();
+    if ( &is_array($value) ) {
+      foreach ( @$value ) {
+        print Dumper $_;
+        push( @value_instances, $_ );
+      }
+    } else {
+      push( @value_instances, $value );
+    }
+    foreach ( @value_instances ) {
+      if ( $_ ne 0 ) {
+        if ( $_ ne 1 ) {
+          push( @list, '--' . $key . '=' . $_ );
+        } else {
+          push ( @list, '--' . $key );
+        }
       }
     }
   }
@@ -200,6 +213,28 @@ sub rsync_command {
   }
   my $path_list = join( ' ', @paths );
   return 'rsync ' . $options_list . ' ' . $path_list . ' ' . $target_directory;
+}
+
+sub is_array {
+  my ($ref) = @_;
+  # Firstly arrays need to be references, throw
+  #  out non-references early.
+  return 0 unless ref $ref;
+
+  # Now try and eval a bit of code to treat the
+  #  reference as an array.  If it complains
+  #  in the 'Not an ARRAY reference' then we're
+  #  sure it's not an array, otherwise it was.
+  eval {
+    my $a = @$ref;
+  };
+  if ($@=~/^Not an ARRAY reference/) {
+    return 0;
+  } elsif ($@) {
+    die "Unexpected error in eval: $@\n";
+  } else {
+    return 1;
+  }
 }
 
 1

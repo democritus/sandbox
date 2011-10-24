@@ -37,46 +37,66 @@ sub is_array {
   }
 }
 
-# Load command line options into hash
-my %user_options = ();
-Getopt::Long::GetOptions(
-  'compress' => \$user_options{'compress'},
-  'dry-run' => \$user_options{'dry-run'},
-  'exclude=s' => \$user_options{'exclude'},
-  'progress' => \$user_options{'progress'},
-  'recursive' => \$user_options{'recursive'},
-  'rsh=s' => \$user_options{'rsh'},
-  'update' => \$user_options{'update'},
-  'verbose' => \$user_options{'verbose'}
-);
-# Default options
-my %default_options = (
-  'compress' => 1,
-  #'dry-run' => 0,
-  #'exclude' => 0,
-  'progress' => 1,
-  'recursive' => 1,
-  'rsh' => '"ssh -p22"',
-  'update' => 1,
-  'verbose' => 1
-);
-# Note that options are also loaded from a configuration file.
-# Combined in subroutine "options"
-# Priority: 1. Command line  2. Config file  3. Default
-
 # Compile-time verified class fields
 # http://perldoc.perl.org/fields.html
-use fields qw( CONFIGURATION );
+use fields qw( CONFIGURATION_FILE USER_OPTIONS );
 
 sub new {
   my $self = shift;
-  my $configuration_file = shift;
   $self = fields::new($self) unless ref $self;
-  # Load YAML into configuration hash
-  open my $fh, '<', $configuration_file
-    or die "can't open config file: $!";
+
+  $self->{CONFIGURATION_FILE} = shift;
+
+  # Restrict command line options and load them into hash
+  my %user_options = ();
+  Getopt::Long::GetOptions(
+    'compress' => \$user_options{'compress'},
+    'dry-run' => \$user_options{'dry-run'},
+    'exclude=s' => \$user_options{'exclude'},
+    'progress' => \$user_options{'progress'},
+    'recursive' => \$user_options{'recursive'},
+    'rsh=s' => \$user_options{'rsh'},
+    'update' => \$user_options{'update'},
+    'verbose' => \$user_options{'verbose'}
+  );
+  $self->{USER_OPTIONS} = \%user_options;
+
+  return $self;
+}
+
+sub default_options {
+  # Default options
+  my %default_options = (
+    'compress' => 1,
+    #'dry-run' => 0,
+    #'exclude' => 0,
+    'progress' => 1,
+    'recursive' => 1,
+    'rsh' => '"ssh -p22"',
+    'update' => 1,
+    'verbose' => 1
+  );
+  return \%default_options;
+}
+
+sub user_options {
+  my $self = shift;
+  return $self->{USER_OPTIONS};
+}
+
+sub configuration_file {
+  my $self = shift;
+  return $self->{CONFIGURATION_FILE};
+}
+
+sub configuration_from_file {
+  my $file = shift;
+  # Get configuration from YAML file and save to hash
+  open my $fh, '<', $file or die "can't open config file: $!";
   my $configuration = YAML::XS::LoadFile( $fh );
-  # Replace underscore with dash in key names (YAML files disallow underscores)
+
+  # Replace underscores with dashes in configuration file since YAML files
+  # disallow underscores in key names
   my $options = $configuration->{'options'}; 
   while ( my($key, $value) = each %$options ) {
     if ( $key =~ /_/ ) {
@@ -86,13 +106,29 @@ sub new {
       delete $options->{$key};
     }
   }
-  $self->{CONFIGURATION} = $configuration;
-  return $self;
+  return $configuration;
 }
 
 sub configuration {
   my $self = shift;
-  return $self->{CONFIGURATION};
+  my $default_options = &default_options;
+  my $configuration_from_file = &configuration_from_file(
+    $self->configuration_file );
+  my %configuration = ( 'options' => $default_options );
+
+  # Merge default configuration with keys from configuration file
+  @configuration{ keys %$configuration_from_file } =
+    values %$configuration_from_file;
+
+  # Override with values from command line
+  my $user_options = &user_options;
+  my $options = $configuration{'options'};
+  while ( my($key, $value) = each %$user_options ) {
+    if ( defined $value ) {
+      $options->{$key} = $value;
+    }
+  }
+  return \%configuration;
 }
 
 sub files {
@@ -102,18 +138,7 @@ sub files {
 
 sub options {
   my $self = shift;
-  # Set options equal to default options
-  my %options = %default_options;
-  # Override with values from configuration file
-  my $config_options = $self->configuration->{'options'};
-  @options{ keys %$config_options } = values %$config_options;
-  # Override with values from command line
-  while ( my($key, $value) = each %user_options ) {
-    if ( defined $value ) {
-      $options{$key} = $value;
-    }
-  }
-  return \%options;
+  return $self->configuration->{'options'};
 }
 
 sub options_list {
@@ -126,7 +151,6 @@ sub options_list {
     my @value_instances = ();
     if ( &is_array($value) ) {
       foreach ( @$value ) {
-        print Dumper $_;
         push( @value_instances, $_ );
       }
     } else {

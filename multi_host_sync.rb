@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 
 require 'optparse'
-require 'ostruct'
+require 'pp'
 require 'yaml'
 
 class MultiHostSync
@@ -10,16 +10,23 @@ class MultiHostSync
   attr_accessor :configuration
   attr_accessor :targets
 
-  def self.get_options(args)
-    options = OpenStruct.new
-    options.compress = true
-    options.dry_run = false
-    options.exclude_pattern = []
-    options.progress = true
-    options.recursive = true
-    options.rsh = '"ssh -p22"'
-    options.update_files = true
-    options.verbose = false
+  def self.symbolize_keys( hash )
+    hash.inject({}) do |result, (key, value)|
+      new_key   = case key
+                  when String then key.to_sym
+                  else key
+                  end
+      new_value = case value
+                  when Hash then symbolize_keys(value)
+                  else value
+                  end
+      result[new_key] = new_value
+      result
+    end
+  end
+
+  def self.get_options( args = {} )
+    options = {}
 
     opts = OptionParser.new do |opts|
       opts.banner = "Usage: multi_host_sync.rb [options]"
@@ -28,38 +35,36 @@ class MultiHostSync
 
       opts.separator 'Specific options:'
 
-      opts.on( '-z', '--compress',
-               'compress file data during the transfer' ) do |comp|
       opts.on( '-n', '--dry-run',
                'show what would have been transferred' ) do |dry|
-        options.dry_run = true
+        options[:dry_run] = true
       end
 
       opts.on( '--exclude=[PATTERN]',
                'exclude files matching PATTERN' ) do |excl|
-        options.exclude_pattern << excl
+        options[ :exclude_pattern ] << excl
       end
 
       opts.on( '--progress', 'show progress during transfer' ) do |prg|
-        options.prg = prg
+        options[:progress] = prg
       end
 
       opts.on( '-r', '--recursive', 'recurse into directories' ) do |rec|
-        options.rec = rec
+        options[:recursive] = rec
       end
 
       opts.on( '-e', '--rsh=COMMAND',
                'specify the remote shell to use' ) do |rsh|
-        options.rsh = rsh
+        options[:rsh] = rsh
       end
 
       opts.on( '-u', '--update',
-               'skip files that are newer on the receiver' ) do |updt|
-        options.update_files = updt
+               'skip files that are newer on the receiver' ) do |upd|
+        options[:update_files] = upd
       end
 
       opts.on( '-v', '--verbose', 'increase verbosity' ) do |vrb|
-        options.verbose = vrb
+        options[:verbose] = vrb
       end
 
       opts.separator ''
@@ -78,22 +83,27 @@ class MultiHostSync
         exit
       end
     end
+    opts.parse!( args )
+    options
+  end
+
+  def default_options
+    {
+      :compress => true,
+      :dry_run => false,
+      :exclude_pattern => [],
+      :progress => true,
+      :recursive => true,
+      :rsh => '"ssh -p22"',
+      :update_files => true,
+      :verbose => false
+    }
   end
 
   def initialize( configuration_file = nil )
-    options = {}
-    OptionParser.new do |opts|
-      opts.banner = "Usage: example.rb [options]"
+    @configuration_file = configuration_file
+    pp options
 
-      opts.on("-v", "--[no-]verbose", "Run verbosely") do
-        options[:verbose] = v
-      end
-    end.parse!
-
-    p options
-    p ARGV
-
-    @configuration = configuration_from_file( configuration_file )
     # TODO: allow overriding configuration via command line arguments
     options = {}
     $*.each do |arg|
@@ -104,27 +114,31 @@ class MultiHostSync
   end
 
   def sync
-    puts sync_command @configuration['targets']
-    #IO.popen( "#{sync_command(@configuration['targets'])}" ) { |f| puts f.gets }
+    puts sync_command configuration['targets']
+    #IO.popen( "#{sync_command(configuration['targets'])}" ) { |f| puts f.gets }
   end
 
   def default_options
-    {
-      'update' => nil,
-      'recursive' => nil,
-      'compress' => nil,
-      'verbose' => nil,
-      'progress' => nil,
-      'rsh' => '"ssh -p22"'
-      #'dry-run' => nil
-    }
+    MultiHostSync.get_options( ARGV )
   end
 
+  def configuration
+    configuration = configuration_from_file.dup
+    configuration[:options] = default_options
+    configuration[:options].merge!(
+      configuration_from_file[:options]
+    ).merge(
+      MultiHostSync.get_options( ARGV )
+    )
+    configuration[:options];
+  end
 
-  private
+  def options
+    configuration[:options]
+  end
 
-  def configuration_from_file( file )
-    YAML.load_file file
+  def configuration_from_file
+     MultiHostSync.symbolize_keys( YAML.load_file( @configuration_file ) )
   end
 
   def options_list
@@ -133,7 +147,7 @@ class MultiHostSync
   end
 
   def source_file
-    File.new( @configuration['source_path'] )
+    File.new( configuration['source_path'] )
   end
 
   def source_path

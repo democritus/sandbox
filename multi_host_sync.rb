@@ -3,6 +3,7 @@
 require 'optparse'
 require 'pp'
 require 'yaml'
+require 'socket'
 
 class MultiHostSync
 
@@ -118,6 +119,27 @@ class MultiHostSync
 
   def hosts
     configuration[:hosts]
+  end
+
+  def remote_hosts_and_local_directory
+    current_host = Socket.gethostname
+    remote_hosts = hosts.dup
+    remote_hosts.each_pair do |key, value|
+      if ( value[:domain] == current_host )
+        local_directory = value[:directory]
+        remote_hosts.delete( key )
+        break
+      end
+    end
+    [ remote_hosts, local_directory ]
+  end
+
+  def remote_hosts
+    remote_hosts_and_local_directory[0]
+  end
+
+  def local_directory
+    remote_hosts_and_local_directory[1]
   end
 
   def options

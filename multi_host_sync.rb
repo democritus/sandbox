@@ -83,34 +83,13 @@ class MultiHostSync
         exit
       end
     end
-    opts.parse!( args )
+    opts.parse!( args ) unless args.empty?
     options
-  end
-
-  def default_options
-    {
-      :compress => true,
-      :dry_run => false,
-      :exclude_pattern => [],
-      :progress => true,
-      :recursive => true,
-      :rsh => '"ssh -p22"',
-      :update_files => true,
-      :verbose => false
-    }
   end
 
   def initialize( configuration_file = nil )
     @configuration_file = configuration_file
     pp options
-
-    # TODO: allow overriding configuration via command line arguments
-    options = {}
-    $*.each do |arg|
-      pair = arg.split('=')
-      options.merge!( pair[0].sub('--', '').to_sym => pair[1] )
-    end
-    @options = default_options.merge( options )
   end
 
   def sync
@@ -119,7 +98,7 @@ class MultiHostSync
   end
 
   def default_options
-    MultiHostSync.get_options( ARGV )
+    MultiHostSync.get_options
   end
 
   def configuration
@@ -133,6 +112,14 @@ class MultiHostSync
     configuration[:options];
   end
 
+  def files
+    configuration[:files]
+  end
+
+  def hosts
+    configuration[:hosts]
+  end
+
   def options
     configuration[:options]
   end
@@ -142,7 +129,7 @@ class MultiHostSync
   end
 
   def options_list
-    @options.map { |key, value|
+    options.map { |key, value|
       "--#{key.to_s}" + (value ? "=#{value}" : '') }.join(' ')
   end
 

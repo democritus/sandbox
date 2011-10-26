@@ -94,19 +94,23 @@ sub configuration_from_file {
   # Get configuration from YAML file and save to hash
   open my $fh, '<', $file or die "can't open config file: $!";
   my $configuration = YAML::XS::LoadFile( $fh );
+  &underscores_to_dashes( $configuration->{'options'} );
+  return $configuration;
+}
 
-  # Replace underscores with dashes in configuration file since YAML files
-  # disallow underscores in key names
-  my $options = $configuration->{'options'}; 
-  while ( my($key, $value) = each %$options ) {
+# Replace underscores with dashes in configuration file since YAML files
+# disallow underscores in key names
+sub underscores_to_dashes {
+  my $input = shift;
+   while ( my($key, $value) = each %$input ) {
     if ( $key =~ /_/ ) {
       my $fixed_key = $key;
       $fixed_key =~ s/_/-/;
-      $options->{$fixed_key} = $value;
-      delete $options->{$key};
+      $input->{$fixed_key} = $value;
+      delete $input->{$key};
     }
   }
-  return $configuration;
+  return 1;
 }
 
 sub configuration {

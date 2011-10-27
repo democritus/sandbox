@@ -165,7 +165,7 @@ sub options_list {
         if ( $_ ne 1 ) {
           push( @list, '--' . $key . '=' . $_ );
         } else {
-          push ( @list, '--' . $key );
+          push( @list, '--' . $key );
         }
       }
     }

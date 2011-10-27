@@ -90,11 +90,10 @@ class MultiHostSync
 
   def initialize( configuration_file = nil )
     @configuration_file = configuration_file
-    pp options
   end
 
   def sync
-    puts sync_command configuration['targets']
+    puts sync_command
     #IO.popen( "#{sync_command(configuration['targets'])}" ) { |f| puts f.gets }
   end
 
@@ -110,28 +109,29 @@ class MultiHostSync
     ).merge(
       MultiHostSync.get_options( ARGV )
     )
-    configuration[:options];
+    configuration
   end
 
   def files
     configuration[:files]
   end
 
-  def hosts
+  def hosts_from_configuration_file
     configuration[:hosts]
   end
 
   def remote_hosts_and_local_directory
     current_host = Socket.gethostname
-    remote_hosts = hosts.dup
-    remote_hosts.each_pair do |key, value|
-      if ( value[:domain] == current_host )
-        local_directory = value[:directory]
-        remote_hosts.delete( key )
+    hosts = hosts_from_configuration_file.dup
+    directory = ''
+    hosts.each_pair do |key, value|
+      if value[:domain] == current_host
+        directory = value[:directory]
+        hosts.delete( key )
         break
       end
     end
-    [ remote_hosts, local_directory ]
+    [ hosts, directory ]
   end
 
   def remote_hosts
@@ -151,8 +151,30 @@ class MultiHostSync
   end
 
   def options_list
+    list = []
     options.map { |key, value|
       "--#{key.to_s}" + (value ? "=#{value}" : '') }.join(' ')
+    options.each do |key, value|
+      next unless value
+      instances = []
+      if value.is_a? Array
+        value.each do |instance|
+          instances.push( instance )
+        end
+      else
+        instances.push( value )
+      end
+      instances.each do |instance|
+        if instance
+          if instance
+            list.push( '--' + key.to_s )
+          else
+            list.push( '--' + key.to_s + '=' + instance )
+          end
+        end
+      end
+    end
+    list.join( ' ' )
   end
 
   def source_file
@@ -191,15 +213,15 @@ class MultiHostSync
     "rsync #{options_list} #{target_path(target)} #{source_directory_path}"
   end
 
-  def sync_command( targets )
+  def sync_command
     commands = []
     # TODO: change to :put, :get, :put to sync files once this is tested
-    #[ :put, :get, :put ].each do |type|
-    [ :put ].each do |type|
-      targets.each_pair do |key, target|
-        commands << send( "#{type}_command", target )
+    [ :put, :get, :put ].each do |type|
+    #[ :put ].each do |type|
+      remote_hosts.each_pair do |key, host|
+        commands << send( "#{type}_command", host )
       end
     end
-    commands.join("; \\\n")
+    commands.join( "; \\\n" )
   end
 end

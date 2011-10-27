@@ -92,11 +92,6 @@ class MultiHostSync
     @configuration_file = configuration_file
   end
 
-  def sync
-    puts sync_command
-    #IO.popen( "#{sync_command(configuration['targets'])}" ) { |f| puts f.gets }
-  end
-
   def default_options
     MultiHostSync.get_options
   end
@@ -205,15 +200,26 @@ class MultiHostSync
     target_directory( target ) + '/' + base_name
   end
 
-  def put_command( target )
-    "rsync #{options_list} #{source_path} #{target_directory(target)}"
+  def put_command( host )
+    rsync_command( local_directory, remote_directory(host), files,
+                   options_list )
   end
 
-  def get_command( target )
-    "rsync #{options_list} #{target_path(target)} #{source_directory_path}"
+  def get_command( host )
+    rsync_command( remote_directory(host), local_directory, files,
+                   options_list )
   end
 
-  def sync_command
+  def rsync_command( source_directory, target_directory, files, options_list )
+    paths = []
+    files.each do |file|
+      paths.push( source_directory + '/' + file )
+    end
+    path_list = paths.join(' ')
+    "rsync #{options_list} #{path_list} #{target_directory}"
+  end
+
+  def sync
     commands = []
     # TODO: change to :put, :get, :put to sync files once this is tested
     [ :put, :get, :put ].each do |type|
@@ -222,6 +228,8 @@ class MultiHostSync
         commands << send( "#{type}_command", host )
       end
     end
-    commands.join( "; \\\n" )
+    commands_string = commands.join( "; \\\n" )
+    puts commands_string
+    #IO.popen( commands_string ) { |f| puts f.gets }
   end
 end

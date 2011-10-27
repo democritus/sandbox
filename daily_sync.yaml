@@ -15,7 +15,7 @@ hosts:
     directory: '/home/brian/Documents'
   cpbrianw:
     user: 'brianwarren'
-    domain: 'cpbrianw.cptxoffice.net'
+    domain: 'Brian-Warrens-Mac-mini.local'
     directory: '/Users/brianwarren/Documents'
 
 options:

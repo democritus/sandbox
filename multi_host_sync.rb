@@ -147,11 +147,9 @@ class MultiHostSync
 
   def options_list
     list = []
-    options.map { |key, value|
-      "--#{key.to_s}" + (value ? "=#{value}" : '') }.join(' ')
     options.each do |key, value|
-      next unless value
       instances = []
+      next unless value
       if value.is_a? Array
         value.each do |instance|
           instances.push( instance )
@@ -161,7 +159,7 @@ class MultiHostSync
       end
       instances.each do |instance|
         if instance
-          if instance
+          if instance === true 
             list.push( '--' + key.to_s )
           else
             list.push( '--' + key.to_s + '=' + instance )
@@ -172,32 +170,8 @@ class MultiHostSync
     list.join( ' ' )
   end
 
-  def source_file
-    File.new( configuration['source_path'] )
-  end
-
-  def source_path
-    source_file.path
-  end
-
-  def base_name
-    File.basename( source_path ) 
-  end
-
-  def source_directory
-    Dir.new( File.dirname( source_path ) )
-  end
-
-  def source_directory_path
-    source_directory.path
-  end
-
-  def target_directory( target )
-    "#{target['user']}@#{target['host']}:#{target['directory']}"
-  end
-
-  def target_path( target )
-    target_directory( target ) + '/' + base_name
+  def remote_directory( host )
+    "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
   end
 
   def put_command( host )
@@ -222,8 +196,8 @@ class MultiHostSync
   def sync
     commands = []
     # TODO: change to :put, :get, :put to sync files once this is tested
-    [ :put, :get, :put ].each do |type|
-    #[ :put ].each do |type|
+    #[ :put, :get, :put ].each do |type|
+    [ :put ].each do |type|
       remote_hosts.each_pair do |key, host|
         commands << send( "#{type}_command", host )
       end

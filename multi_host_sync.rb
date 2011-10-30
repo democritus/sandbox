@@ -46,6 +46,11 @@ class MultiHostSync
         options[ :exclude_pattern ] << excl
       end
 
+      opts.on( '--hostname=[NAME]',
+               'specify the hostname of the source machine' ) do |hst|
+        options[:hostname] = hst
+      end
+
       opts.on( '--progress', 'show progress during transfer' ) do |prg|
         options[:progress] = prg
       end
@@ -92,16 +97,9 @@ class MultiHostSync
     @configuration_file = configuration_file
   end
 
-  def default_options
-    MultiHostSync.get_options
-  end
-
   def configuration
     configuration = configuration_from_file.dup
-    configuration[:options] = default_options
-    configuration[:options].merge!(
-      configuration_from_file[:options]
-    ).merge(
+    configuration[:options] = configuration_from_file[:options].merge(
       MultiHostSync.get_options( ARGV )
     )
     configuration
@@ -115,26 +113,39 @@ class MultiHostSync
     configuration[:hosts]
   end
 
-  def remote_hosts_and_local_directory
-    current_host = Socket.gethostname
+  def remote_hosts_and_local_host
+    hostname = options[:hostname] || Socket.gethostname
     hosts = hosts_from_configuration_file.dup
-    directory = ''
+    my_host = nil
     hosts.each_pair do |key, value|
-      if value[:domain] == current_host
-        directory = value[:directory]
+      if value[:domain] == hostname
+        my_host = value
         hosts.delete( key )
         break
       end
     end
-    [ hosts, directory ]
+    local_host_must_be_known( my_host )
+    [ hosts, my_host ]
+  end
+
+  def local_host_must_be_known( host )
+    unless host
+      raise StandardError, 'The local host could not be determined or it did' +
+        ' not match any of the hosts listed in the configuration file. You' +
+        ' can specify the local host via the option "--hostname=NAME"'
+    end
   end
 
   def remote_hosts
-    remote_hosts_and_local_directory[0]
+    remote_hosts_and_local_host[0]
   end
 
   def local_directory
-    remote_hosts_and_local_directory[1]
+    remote_hosts_and_local_host[1][:directory]
+  end
+
+  def local_hostname
+    remote_hosts_and_local_host[1][:domain]
   end
 
   def options

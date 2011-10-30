@@ -131,8 +131,8 @@ class MultiHostSync
   def local_host_must_be_known( host )
     unless host
       raise StandardError, 'The local host could not be determined or it did' +
-        ' not match any of the hosts listed in the configuration file. You' +
-        ' can specify the local host via the option "--hostname=NAME"'
+        ' not match any of the hosts listed in the configuration file:' +
+        " #{configuration_file_path}. You can specify the local host via the" +         ' option "--hostname=NAME"'
     end
   end
 
@@ -152,8 +152,12 @@ class MultiHostSync
     configuration[:options]
   end
 
+  def configuration_file_path
+    Dir.pwd + '/' + @configuration_file
+  end
+
   def configuration_from_file
-     MultiHostSync.symbolize_keys( YAML.load_file( @configuration_file ) )
+     MultiHostSync.symbolize_keys( YAML.load_file( configuration_file_path ) )
   end
 
   def options_list

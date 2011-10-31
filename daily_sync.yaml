@@ -1,10 +1,14 @@
 files: [ 'cPanel', 'Qlogic' ]
 
 hosts:
-  sagan:
-    user: 'brianw'
-    domain: 'sagan.cpanel.net'
-    directory: '/home/brianw/Documents'
+  cpbrianw:
+    user: 'brianwarren'
+    domain: 'Brian-Warrens-Mac-mini.local'
+    directory: '/Users/brianwarren/Documents'
+  jester:
+    user: 'brian'
+    domain: 'jester.qlogicinc.com'
+    directory: 'home/brian/Documents'
   luna:
     user: 'brian'
     domain: 'luna.qlogicinc.com'
@@ -13,10 +17,10 @@ hosts:
     user: 'brian'
     domain: 'lefty.qlogicinc.com'
     directory: '/home/brian/Documents'
-  cpbrianw:
-    user: 'brianwarren'
-    domain: 'Brian-Warrens-Mac-mini.local'
-    directory: '/Users/brianwarren/Documents'
+  sagan:
+    user: 'brianw'
+    domain: 'sagan.cpanel.net'
+    directory: '/home/brianw/Documents'
 
 options:
   dry-run: true

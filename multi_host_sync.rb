@@ -186,7 +186,7 @@ class MultiHostSync
   end
 
   def remote_directory( host )
-    "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
+    dir = "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
   end
 
   def put_command( host )

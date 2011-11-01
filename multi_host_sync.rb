@@ -26,6 +26,9 @@ class MultiHostSync
     end
   end
 
+  def self.host_connectivity( domain, port )
+  end
+
   def self.get_options( args = {} )
     options = {}
 
@@ -41,18 +44,28 @@ class MultiHostSync
         options[:dry_run] = true
       end
 
-      opts.on( '--exclude=[PATTERN]',
+      opts.on( '--exclude=PATTERN',
                'exclude files matching PATTERN' ) do |excl|
         options[ :exclude_pattern ] << excl
       end
 
-      opts.on( '--hostname=[NAME]',
+      opts.on( '--hostname=NAME',
                'specify the hostname of the source machine' ) do |hst|
         options[:hostname] = hst
       end
 
+      opts.on( '--port=PORT',
+               'specify the port to use to connect to remote host' ) do |prt|
+        options[:port] = prt
+      end
+
       opts.on( '--progress', 'show progress during transfer' ) do |prg|
         options[:progress] = prg
+      end
+
+      opts.on( '--protocol=PROTOCOL',
+               'specify the protocol to use to connect to remote host' ) do |p|
+        options[:protocol] = p
       end
 
       opts.on( '-r', '--recursive', 'recurse into directories' ) do |rec|
@@ -61,7 +74,15 @@ class MultiHostSync
 
       opts.on( '-e', '--rsh=COMMAND',
                'specify the remote shell to use' ) do |rsh|
-        options[:rsh] = rsh
+        # Use explicitly specified rsh command, if supplied. Otherwise, build
+        # rsh command using specified protocolo and port
+        if ( rsh )
+          options[:rsh] = rsh
+        else
+          if rsh = options[:protocol]
+            rsh += " -p#{options[:port].to_s}" if options[:port]
+          end
+        end
       end
 
       opts.on( '-u', '--update',
@@ -177,7 +198,7 @@ class MultiHostSync
           if instance === true 
             list.push( '--' + key.to_s )
           else
-            list.push( '--' + key.to_s + '=' + instance )
+            list.push( '--' + key.to_s + '=' + instance.to_s )
           end
         end
       end

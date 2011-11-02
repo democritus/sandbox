@@ -26,10 +26,8 @@ options:
   dry-run: true
   exclude: [ '"*.swp"', '"*~"' ]
   compress: true
-  port: 22
   progress: true
-  protocol: 'ssh'
   recursive: true
-  #rsh: '"ssh -p22"'
+  rsh: '"ssh -p22"'
   update: true
   verbose: true

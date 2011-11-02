@@ -26,7 +26,14 @@ class MultiHostSync
     end
   end
 
-  def self.host_connectivity( domain, port )
+  def self.host_reachable?( host, port )
+    puts "Verifying connectivity to #{host} on port #{port}"
+    begin
+      TCPSocket.open( host, port )
+    rescue
+      return false
+    end
+    true
   end
 
   def self.get_options( args = {} )
@@ -54,18 +61,8 @@ class MultiHostSync
         options[:hostname] = hst
       end
 
-      opts.on( '--port=PORT',
-               'specify the port to use to connect to remote host' ) do |prt|
-        options[:port] = prt
-      end
-
       opts.on( '--progress', 'show progress during transfer' ) do |prg|
         options[:progress] = prg
-      end
-
-      opts.on( '--protocol=PROTOCOL',
-               'specify the protocol to use to connect to remote host' ) do |p|
-        options[:protocol] = p
       end
 
       opts.on( '-r', '--recursive', 'recurse into directories' ) do |rec|
@@ -74,15 +71,7 @@ class MultiHostSync
 
       opts.on( '-e', '--rsh=COMMAND',
                'specify the remote shell to use' ) do |rsh|
-        # Use explicitly specified rsh command, if supplied. Otherwise, build
-        # rsh command using specified protocolo and port
-        if ( rsh )
-          options[:rsh] = rsh
-        else
-          if rsh = options[:protocol]
-            rsh += " -p#{options[:port].to_s}" if options[:port]
-          end
-        end
+        options[:rsh] = rsh
       end
 
       opts.on( '-u', '--update',
@@ -118,12 +107,16 @@ class MultiHostSync
     @configuration_file = configuration_file
   end
 
+  def options_from_command_line
+    MultiHostSync.get_options( ARGV )
+  end
+
   def configuration
-    configuration = configuration_from_file.dup
-    configuration[:options] = configuration_from_file[:options].merge(
-      MultiHostSync.get_options( ARGV )
+    config = configuration_from_file.dup
+    config[:options] = configuration_from_file[:options].merge(
+      options_from_command_line
     )
-    configuration
+    config
   end
 
   def files
@@ -139,10 +132,11 @@ class MultiHostSync
     hosts = hosts_from_configuration_file.dup
     my_host = nil
     hosts.each_pair do |key, value|
+      hosts[key][:protocol] = 'ssh' unless value[:protocol]
+      hosts[key][:port] = 22 unless value[:port]
       if value[:domain] == hostname
         my_host = value
         hosts.delete( key )
-        break
       end
     end
     local_host_must_be_known( my_host )
@@ -207,7 +201,7 @@ class MultiHostSync
   end
 
   def remote_directory( host )
-    dir = "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
+    "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
   end
 
   def put_command( host )
@@ -235,7 +229,9 @@ class MultiHostSync
     #[ :put, :get, :put ].each do |type|
     [ :put ].each do |type|
       remote_hosts.each_pair do |key, host|
-        commands << send( "#{type}_command", host )
+        if MultiHostSync::host_reachable?( host[:domain], host[:port] )
+          commands << send( "#{type}_command", host )
+        end
       end
     end
     commands_string = commands.join( "; \\\n" )

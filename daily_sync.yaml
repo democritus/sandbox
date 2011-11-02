@@ -24,7 +24,7 @@ hosts:
 
 options:
   dry-run: true
-  exclude: [ '"*.swp"', '"*~"' ]
+  exclude: [ '*.swp', '*~' ]
   compress: true
   progress: true
   recursive: true

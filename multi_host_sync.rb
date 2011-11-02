@@ -27,12 +27,14 @@ class MultiHostSync
   end
 
   def self.host_reachable?( host, port )
-    puts "Verifying connectivity to #{host} on port #{port}"
+    print "#{host} connectivity on port #{port}:"
     begin
       TCPSocket.open( host, port )
-    rescue
+    rescue SocketError => error
+      print " fail! Error: #{error}\n";
       return false
     end
+    puts " success!\n";
     true
   end
 
@@ -53,7 +55,8 @@ class MultiHostSync
 
       opts.on( '--exclude=PATTERN',
                'exclude files matching PATTERN' ) do |excl|
-        options[ :exclude_pattern ] << excl
+        # add quotes
+        options[ :exclude_pattern ] << '"' + excl + '"'
       end
 
       opts.on( '--hostname=NAME',
@@ -71,7 +74,8 @@ class MultiHostSync
 
       opts.on( '-e', '--rsh=COMMAND',
                'specify the remote shell to use' ) do |rsh|
-        options[:rsh] = rsh
+        # add quotes
+        options[:rsh] = '"' + rsh + '"'
       end
 
       opts.on( '-u', '--update',

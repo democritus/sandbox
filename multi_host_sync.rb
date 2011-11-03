@@ -121,12 +121,14 @@ class MultiHostSync
     options_from_command_line.each_pair do |key, value|
       # Merge arrays that already exist...
       if value.is_a?(Array) && config[:options][key]
+        pp config[:options][key]
         config[:options][key] += value
       # ...but replace scalars and copy arrays that don't yet exist
       else
         config[:options][key] = value
       end
     end
+    pp config[:options]
     config
   end
 

@@ -23,8 +23,8 @@ hosts:
     directory: '/home/brianw/Documents'
 
 options:
-  dry-run: true
-  exclude: [ '*.swp', '*~' ]
+  dry_run: true
+  exclude_pattern: [ '*.swp', '*~' ]
   compress: true
   progress: true
   recursive: true

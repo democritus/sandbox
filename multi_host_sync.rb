@@ -29,7 +29,7 @@ class MultiHostSync
   def self.host_reachable?( host, port )
     print "#{host} connectivity on port #{port}:"
     begin
-      TCPSocket.open( host, port )
+      #TCPSocket.open( host, port )
     rescue SocketError => error
       print " fail! Error: #{error}\n";
       return false
@@ -53,10 +53,8 @@ class MultiHostSync
         options[:dry_run] = true
       end
 
-      opts.on( '--exclude=PATTERN',
-               'exclude files matching PATTERN' ) do |excl|
-        # add quotes
-        options[ :exclude_pattern ] << '"' + excl + '"'
+      opts.on( '--exclude=PATTERN LIST a,b,c', Array, 'exclude files matching PATTERN' ) do |excl|
+        options[ :exclude_pattern ] = excl
       end
 
       opts.on( '--hostname=NAME',
@@ -117,9 +115,18 @@ class MultiHostSync
 
   def configuration
     config = configuration_from_file.dup
-    config[:options] = configuration_from_file[:options].merge(
-      options_from_command_line
-    )
+    #pp config[:options]
+    #pp options_from_command_line
+    #exit;
+    options_from_command_line.each_pair do |key, value|
+      # Merge arrays that already exist...
+      if value.is_a?(Array) && config[:options][key]
+        config[:options][key] += value
+      # ...but replace scalars and copy arrays that don't yet exist
+      else
+        config[:options][key] = value
+      end
+    end
     config
   end
 

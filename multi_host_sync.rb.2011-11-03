@@ -7,10 +7,9 @@ require 'socket'
 
 class MultiHostSync
 
-  PRIVATE_OPTIONS = [ :hostname ]
-  KEY_OPTION_MAP = {
-    :dry_run => 'dry-run'
-  }
+  attr_accessor :options
+  attr_accessor :configuration
+  attr_accessor :targets
 
   def self.symbolize_keys( hash )
     hash.inject({}) do |result, (key, value)|
@@ -39,7 +38,9 @@ class MultiHostSync
     true
   end
 
-  def self.get_options( args, options = {} )
+  def self.get_options( args = {} )
+    options = {}
+
     opts = OptionParser.new do |opts|
       opts.banner = "Usage: multi_host_sync.rb [options]"
       
@@ -52,12 +53,11 @@ class MultiHostSync
         options[:dry_run] = true
       end
 
-      opts.on( '--exclude=[LIST]', Array,
-               'exclude files matching PATTERN' ) do |excl|
-        options[ :exclude ] = excl
+      opts.on( '--exclude=PATTERN LIST a,b,c', Array, 'exclude files matching PATTERN' ) do |excl|
+        options[ :exclude_pattern ] = excl
       end
 
-      opts.on( '--hostname=[HOSTNAME]',
+      opts.on( '--hostname=NAME',
                'specify the hostname of the source machine' ) do |hst|
         options[:hostname] = hst
       end
@@ -70,9 +70,10 @@ class MultiHostSync
         options[:recursive] = rec
       end
 
-      opts.on( '-e', '--rsh=[COMMAND]',
+      opts.on( '-e', '--rsh=COMMAND',
                'specify the remote shell to use' ) do |rsh|
-        options[:rsh] = rsh
+        # add quotes
+        options[:rsh] = '"' + rsh + '"'
       end
 
       opts.on( '-u', '--update',
@@ -101,96 +102,97 @@ class MultiHostSync
       end
     end
     opts.parse!( args ) unless args.empty?
-    
-    # Replace default values with those from the command line
-    options.each_pair do |key, value|
-      if value.is_a?(Array) && options[key] # Merge arrays that already exist
-        options[key] | value  # union
-      else  # Replace scalars and copy arrays that don't yet exist
-        options[key] = value
-      end
-    end
-
     options
   end
 
   def initialize( configuration_file = nil )
-    
-    # Get configuration hash from yaml file
-    configuration_file = configuration_file
-    configuration_file_path = Dir.pwd + '/' + configuration_file
-    @configuration = MultiHostSync.symbolize_keys(
-      YAML.load_file( configuration_file_path )
-    )
+    @configuration_file = configuration_file
+  end
 
-    # Merge configuration options with command line options
-    @configuration[:options] = MultiHostSync.get_options( ARGV,
-      @configuration[:options] )
-
-    # Get list of hosts from configuration file
-    @hosts = @configuration[:hosts]
-
-    # Get hostname of local server
-    hostname = options[:hostname] || Socket.gethostname
-
-    # Remove local host from list of hosts and set it as current host
-    @local_host = nil
-    @hosts.each_pair do |key, value|
-      @hosts[key][:protocol] = 'ssh' unless value[:protocol]
-      @hosts[key][:port] = 22 unless value[:port]
-      if value[:domain] == hostname
-        @local_host = value
-        @hosts.delete( key )
-      end
-    end
-
-    # Throw error if current_host could not be determined
-    unless @local_host
-      raise StandardError, 'The local host could not be determined or it did' +
-        ' not match any of the hosts listed in the configuration file:' +
-        " #{configuration_file_path}. You can specify the local host via the" +         ' option "--hostname=NAME"'
-    end
+  def options_from_command_line
+    MultiHostSync.get_options( ARGV )
   end
 
   def configuration
-    @configuration
-  end
-
-  def options
-    configuration[:options]
+    config = configuration_from_file.dup
+    #pp config[:options]
+    #pp options_from_command_line
+    #exit;
+    options_from_command_line.each_pair do |key, value|
+      # Merge arrays that already exist...
+      if value.is_a?(Array) && config[:options][key]
+        pp config[:options][key]
+        config[:options][key] += value
+      # ...but replace scalars and copy arrays that don't yet exist
+      else
+        config[:options][key] = value
+      end
+    end
+    pp config[:options]
+    config
   end
 
   def files
     configuration[:files]
   end
 
-  def local_host
-    @local_host
+  def hosts_from_configuration_file
+    configuration[:hosts]
+  end
+
+  def remote_hosts_and_local_host
+    hostname = options[:hostname] || Socket.gethostname
+    hosts = hosts_from_configuration_file.dup
+    my_host = nil
+    hosts.each_pair do |key, value|
+      hosts[key][:protocol] = 'ssh' unless value[:protocol]
+      hosts[key][:port] = 22 unless value[:port]
+      if value[:domain] == hostname
+        my_host = value
+        hosts.delete( key )
+      end
+    end
+    local_host_must_be_known( my_host )
+    [ hosts, my_host ]
+  end
+
+  def local_host_must_be_known( host )
+    unless host
+      raise StandardError, 'The local host could not be determined or it did' +
+        ' not match any of the hosts listed in the configuration file:' +
+        " #{configuration_file_path}. You can specify the local host via the" +         ' option "--hostname=NAME"'
+    end
+  end
+
+  def remote_hosts
+    remote_hosts_and_local_host[0]
   end
 
   def local_directory
-    local_host[:directory]
+    remote_hosts_and_local_host[1][:directory]
   end
 
   def local_hostname
-    local_host[:domain]
+    remote_hosts_and_local_host[1][:domain]
   end
 
-  def hosts
-    @hosts
+  def options
+    configuration[:options]
+  end
+
+  def configuration_file_path
+    Dir.pwd + '/' + @configuration_file
+  end
+
+  def configuration_from_file
+     MultiHostSync.symbolize_keys( YAML.load_file( configuration_file_path ) )
   end
 
   def options_list
     list = []
     options.each do |key, value|
-      # Skip options that are should not be passed to rsync command
-      next if PRIVATE_OPTIONS.include?( key )
-      if KEY_OPTION_MAP.keys.include?( key )
-        key = KEY_OPTION_MAP[key].to_s
-      else
-        key = key.to_s
-      end
       instances = []
+      next unless value
       if value.is_a? Array
         value.each do |instance|
           instances.push( instance )
@@ -201,9 +203,9 @@ class MultiHostSync
       instances.each do |instance|
         if instance
           if instance === true 
-            list.push( "--#{key}" )
+            list.push( '--' + key.to_s )
           else
-            list.push( "--#{key}=#{instance}" )
+            list.push( '--' + key.to_s + '=' + instance.to_s )
           end
         end
       end
@@ -239,7 +241,7 @@ class MultiHostSync
     # TODO: change to :put, :get, :put to sync files once this is tested
     #[ :put, :get, :put ].each do |type|
     [ :put ].each do |type|
-      hosts.each_pair do |key, host|
+      remote_hosts.each_pair do |key, host|
         if MultiHostSync::host_reachable?( host[:domain], host[:port] )
           commands << send( "#{type}_command", host )
         end

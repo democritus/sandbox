@@ -8,7 +8,7 @@ hosts:
   jester:
     user: 'brian'
     domain: 'jester.qlogicinc.com'
-    directory: 'home/brian/Documents'
+    directory: '/home/brian/Documents'
   luna:
     user: 'brian'
     domain: 'luna.qlogicinc.com'
@@ -31,4 +31,3 @@ options:
   rsh: '"ssh -p22"'
   update: true
   verbose: true
-  test: 'test

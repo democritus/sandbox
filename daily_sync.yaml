@@ -31,3 +31,4 @@ options:
   rsh: '"ssh -p22"'
   update: true
   verbose: true
+  test: 'test

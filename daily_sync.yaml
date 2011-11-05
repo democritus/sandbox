@@ -28,6 +28,6 @@ options:
   compress: true
   progress: true
   recursive: true
-  rsh: '"ssh -p22"'
+  rsh: 'ssh -p22'
   update: true
   verbose: true

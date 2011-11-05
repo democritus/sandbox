@@ -8,7 +8,7 @@ require 'socket'
 class MultiHostSync
 
   PRIVATE_OPTIONS = [ :hostname ]
-  KEY_OPTION_MAP = {
+  SYMBOL_TO_STRING_MAP = {
     :dry_run => 'dry-run'
   }
 
@@ -32,7 +32,7 @@ class MultiHostSync
     begin
       #TCPSocket.open( host, port )
     rescue SocketError => error
-      print " fail! Error: #{error}\n";
+      print " failed! Socket error: #{error}\n";
       return false
     end
     puts " success!\n";
@@ -156,16 +156,20 @@ class MultiHostSync
     @configuration
   end
 
+  def local_host
+    @local_host
+  end
+
+  def hosts
+    @hosts
+  end
+
   def options
     configuration[:options]
   end
 
   def files
     configuration[:files]
-  end
-
-  def local_host
-    @local_host
   end
 
   def local_directory
@@ -176,17 +180,13 @@ class MultiHostSync
     local_host[:domain]
   end
 
-  def hosts
-    @hosts
-  end
-
   def options_list
     list = []
     options.each do |key, value|
       # Skip options that are should not be passed to rsync command
       next if PRIVATE_OPTIONS.include?( key )
-      if KEY_OPTION_MAP.keys.include?( key )
-        key = KEY_OPTION_MAP[key].to_s
+      if SYMBOL_TO_STRING_MAP.keys.include?( key )
+        key = SYMBOL_TO_STRING_MAP[key].to_s
       else
         key = key.to_s
       end
@@ -203,13 +203,32 @@ class MultiHostSync
           if instance === true 
             list.push( "--#{key}" )
           else
-            list.push( "--#{key}=#{instance}" )
+            list.push( "--#{key}=\"#{instance}\"" )
           end
         end
       end
     end
     list.join( ' ' )
   end
+
+  def sync
+    commands = []
+    # TODO: change to :put, :get, :put to sync files once this is tested
+    #[ :put, :get, :put ].each do |type|
+    [ :put ].each do |type|
+      hosts.each_pair do |key, host|
+        if MultiHostSync::host_reachable?( host[:domain], host[:port] )
+          commands << send( "#{type}_command", host )
+        end
+      end
+    end
+    commands_string = commands.join( "; \\\n" )
+    puts commands_string
+    #IO.popen( commands_string ) { |f| puts f.gets }
+  end
+
+
+  private
 
   def remote_directory( host )
     "#{host[:user]}@#{host[:domain]}:#{host[:directory]}"
@@ -232,21 +251,5 @@ class MultiHostSync
     end
     path_list = paths.join(' ')
     "rsync #{options_list} #{path_list} #{target_directory}"
-  end
-
-  def sync
-    commands = []
-    # TODO: change to :put, :get, :put to sync files once this is tested
-    #[ :put, :get, :put ].each do |type|
-    [ :put ].each do |type|
-      hosts.each_pair do |key, host|
-        if MultiHostSync::host_reachable?( host[:domain], host[:port] )
-          commands << send( "#{type}_command", host )
-        end
-      end
-    end
-    commands_string = commands.join( "; \\\n" )
-    puts commands_string
-    #IO.popen( commands_string ) { |f| puts f.gets }
   end
 end

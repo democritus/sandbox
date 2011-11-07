@@ -1,0 +1,18 @@
+files: [ 'cPanel', 'Qlogic' ]
+
+hosts:
+  - { user: 'brianwarren', domain: 'Brian-Warrens-Mac-mini.local',  directory: '/Users/brianwarren/Documents' }
+  - { user: 'brian', domain: 'jester.qlogicinc.com',  directory: '/home/brian/Documents' }
+  - { user: 'brian', domain: 'luna.qlogicinc.com', directory: '/home/brian/Documents' }
+  - { user: 'brian', domain: 'lefty.qlogicinc.com', directory: '/home/brian/Documents' }
+  - { user: 'brianw', domain: 'sagan.cpanel.net', directory: '/home/brianw/Documents' }
+
+options:
+  dry_run: true
+  exclude: [ '*.swp', '*~' ]
+  compress: true
+  progress: true
+  recursive: true
+  rsh: 'ssh -p22'
+  update: true
+  verbose: true

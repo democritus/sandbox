@@ -8,7 +8,7 @@ require 'socket'
 class MultiHostSync
 
   PRIVATE_OPTIONS = [ :hostname ]
-  SYMBOL_TO_STRING_MAP = {
+  KEY_TRANSLATION_MAP = {
     :dry_run => 'dry-run'
   }
 
@@ -101,7 +101,7 @@ class MultiHostSync
       end
     end
     opts.parse!( args ) unless args.empty?
-    
+
     # Replace default values with those from the command line
     options.each_pair do |key, value|
       if value.is_a?(Array) && options[key] # Merge arrays that already exist
@@ -114,14 +114,10 @@ class MultiHostSync
     options
   end
 
-  def initialize( configuration_file = nil )
+  def initialize( filename = nil )
     
-    # Get configuration hash from yaml file
-    configuration_file = configuration_file
-    configuration_file_path = Dir.pwd + '/' + configuration_file
     @configuration = MultiHostSync.symbolize_keys(
-      YAML.load_file( configuration_file_path )
-    )
+      YAML.load_file( filename) )
 
     # Merge configuration options with command line options
     @configuration[:options] = MultiHostSync.get_options( ARGV,
@@ -185,8 +181,8 @@ class MultiHostSync
     options.each do |key, value|
       # Skip options that are should not be passed to rsync command
       next if PRIVATE_OPTIONS.include?( key )
-      if SYMBOL_TO_STRING_MAP.keys.include?( key )
-        key = SYMBOL_TO_STRING_MAP[key].to_s
+      if KEY_TRANSLATION_MAP.keys.include?( key )
+        key = KEY_TRANSLATION_MAP[key].to_s
       else
         key = key.to_s
       end

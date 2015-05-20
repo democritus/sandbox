@@ -32,10 +32,7 @@ cd /d %InfoConnectBasePath%\%InfoConnectDirectory%
 rem
 rem Launch InfoConnect
 rem
-rem %InfoConnectExe% VENDOR=SITA TRACE=%TraceLevel%
-
-rem debugging start
 @echo on
 %InfoConnectExe% VENDOR=SITA TRACE=%TraceLevel%
-pause
-rem debugging end
+@echo off
+rem pause
